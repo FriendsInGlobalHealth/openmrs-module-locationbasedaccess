@@ -22,22 +22,23 @@ import java.util.Set;
 
 public class PatientSearchAdviser extends StaticMethodMatcherPointcutAdvisor implements Advisor {
 
-    private static final Log log = LogFactory.getLog(PatientSearchAdviser.class);
-    private Set<String> restrictedGetMethodNames = new HashSet<String>();
+	private static final Log log = LogFactory.getLog(PatientSearchAdviser.class);
+	private Set<String> restrictedGetMethodNames = new HashSet<String>();
 
-    public PatientSearchAdviser() {
-        restrictedGetMethodNames.add("getPatients");
-        restrictedGetMethodNames.add("getPatient");
-        restrictedGetMethodNames.add("getPatientByUuid");
-    }
+	public PatientSearchAdviser() {
+		restrictedGetMethodNames.add("getPatients");
+		restrictedGetMethodNames.add("getPatient");
+		restrictedGetMethodNames.add("getPatientByUuid");
+		restrictedGetMethodNames.add("savePatient");
+	}
 
-    @Override
-    public boolean matches(Method method, Class targetClass) {
-        return restrictedGetMethodNames.contains(method.getName());
-    }
+	@Override
+	public boolean matches(Method method, Class targetClass) {
+		return restrictedGetMethodNames.contains(method.getName());
+	}
 
-    @Override
-    public Advice getAdvice() {
-        return new PatientServiceInterceptorAdvice();
-    }
+	@Override
+	public Advice getAdvice() {
+		return new PatientServiceInterceptorAdvice();
+	}
 }

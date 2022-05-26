@@ -9,6 +9,12 @@
  */
 package org.openmrs.module.locationbasedaccess.aop.interceptor;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
@@ -20,61 +26,74 @@ import org.openmrs.api.context.Daemon;
 import org.openmrs.module.locationbasedaccess.LocationBasedAccessConstants;
 import org.openmrs.module.locationbasedaccess.utils.LocationUtils;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-
 public class LocationServiceInterceptorAdvice implements MethodInterceptor {
 
-    private static final Log log = LogFactory.getLog(LocationServiceInterceptorAdvice.class);
-    private Set<String> restrictedGetMethodNames;
+	private static final Log log = LogFactory.getLog(LocationServiceInterceptorAdvice.class);
+	private Set<String> restrictedGetMethodNames;
 
-    public LocationServiceInterceptorAdvice(Set<String> restrictedGetMethodNames) {
-        this.restrictedGetMethodNames = restrictedGetMethodNames;
-    }
+	public LocationServiceInterceptorAdvice(Set<String> restrictedGetMethodNames) {
+		this.restrictedGetMethodNames = restrictedGetMethodNames;
+	}
 
-    public Object invoke(MethodInvocation invocation) throws Throwable {
-        Method method = invocation.getMethod();
-        Object object = invocation.proceed();
-        // Allow get methods without authentications
-        if(!Context.isAuthenticated() && restrictedGetMethodNames.contains(method.getName())) {
-            return object;
-        }
-        User authenticatedUser = Context.getAuthenticatedUser();
-        String lbacRestriction = Context.getAdministrationService().getGlobalProperty(LocationBasedAccessConstants.LOCATION_RESTRICTION_GLOBAL_PROPERTY_NAME);
-        if (authenticatedUser != null && (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser())|| !(lbacRestriction.equals("true"))) {
-            return object;
-        }
+	public Object invoke(MethodInvocation invocation) throws Throwable {
+		Method method = invocation.getMethod();
+		Object object = invocation.proceed();
+		// Allow get methods without authentications
+		if (!Context.isAuthenticated() && restrictedGetMethodNames.contains(method.getName())) {
+			return object;
+		}
+		User authenticatedUser = Context.getAuthenticatedUser();
+		String lbacRestriction = Context.getAdministrationService()
+				.getGlobalProperty(LocationBasedAccessConstants.LOCATION_RESTRICTION_GLOBAL_PROPERTY_NAME);
+		if (authenticatedUser != null && (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser())
+				|| !(lbacRestriction.equals("true"))) {
+			return object;
+		}
 
-        if(restrictedGetMethodNames.contains(method.getName())) {
-            List<String> accessibleLocationUuids = LocationUtils.getUserAccessibleLocationUuids(authenticatedUser);
-            if (accessibleLocationUuids != null) {
-                if(object instanceof List) {
-                    List<Location> locationList = (List<Location>) object;
-                    for (Iterator<Location> iterator = locationList.iterator(); iterator.hasNext(); ) {
-                        if(!accessibleLocationUuids.contains(iterator.next().getUuid())) {
-                            iterator.remove();
-                        }
-                    }
-                    object = locationList;
-                }
-                else if(object instanceof Location) {
-                    if(!accessibleLocationUuids.contains(((Location)object).getUuid())) {
-                        object = null;
-                    }
-                }
-            }
-            else {
-                log.debug("Search Location : Null Session Location in the UserContext");
-                if(object instanceof List) {
-                    // If the sessionLocationId is null, then return a empty list
-                    return new ArrayList<Location>();
-                }
-            }
-        }
-        return object;
-    }
+		if (restrictedGetMethodNames.contains(method.getName())) {
+			List<String> accessibleLocationUuids = LocationUtils.getUserAccessibleLocationUuids(authenticatedUser);
+
+			if (accessibleLocationUuids != null) {
+				if (object instanceof List) {
+
+					List<Location> locationList = (List<Location>) object;
+					if ("getRootLocations".equals(method.getName())) {
+
+						for (Iterator<Location> iterator = locationList.iterator(); iterator.hasNext();) {
+
+							Location location = iterator.next();
+							if (!accessibleLocationUuids.contains(location.getUuid())) {
+								iterator.remove();
+							}
+						}
+					} else {
+
+						for (Iterator<Location> iterator = locationList.iterator(); iterator.hasNext();) {
+							Location location = iterator.next();
+
+							if (!accessibleLocationUuids.contains(location.getUuid())
+									|| (accessibleLocationUuids.contains(location.getUuid())
+											&& location.getParentLocation() == null)) {
+								iterator.remove();
+							}
+
+						}
+					}
+					object = locationList;
+
+				} else if (object instanceof Location) {
+					if (!accessibleLocationUuids.contains(((Location) object).getUuid())) {
+						object = null;
+					}
+				}
+			} else {
+				log.debug("Search Location : Null Session Location in the UserContext");
+				if (object instanceof List) {
+					// If the sessionLocationId is null, then return a empty list
+					return new ArrayList<Location>();
+				}
+			}
+		}
+		return object;
+	}
 }

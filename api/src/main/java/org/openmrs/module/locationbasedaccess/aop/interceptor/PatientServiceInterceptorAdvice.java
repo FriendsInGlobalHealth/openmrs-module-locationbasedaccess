@@ -9,68 +9,107 @@
  */
 package org.openmrs.module.locationbasedaccess.aop.interceptor;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openmrs.Location;
 import org.openmrs.Patient;
+import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.User;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.context.Daemon;
 import org.openmrs.module.locationbasedaccess.LocationBasedAccessConstants;
+import org.openmrs.module.locationbasedaccess.db.hibernate.HibernateLocationBasedAccessHeuristicsDAO;
 import org.openmrs.module.locationbasedaccess.utils.LocationUtils;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 public class PatientServiceInterceptorAdvice implements MethodInterceptor {
 
-    private static final Log log = LogFactory.getLog(PatientServiceInterceptorAdvice.class);
+	private static final Log log = LogFactory.getLog(PatientServiceInterceptorAdvice.class);
 
-    public Object invoke(MethodInvocation invocation) throws Throwable {
-        User authenticatedUser = Context.getAuthenticatedUser();
-        if (authenticatedUser == null) {
-            return null;
-        }
-        Object object = invocation.proceed();
-        String lbacRestriction = Context.getAdministrationService().getGlobalProperty(LocationBasedAccessConstants.PATIENT_RESTRICTION_GLOBAL_PROPERTY_NAME);
-        if (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser() || !(lbacRestriction.equals("true"))) {
-            return object;
-        }
+	public Object invoke(MethodInvocation invocation) throws Throwable {
+		User authenticatedUser = Context.getAuthenticatedUser();
+		if (authenticatedUser == null) {
+			return null;
+		}
+		Object object = invocation.proceed();
 
-        List<String> accessibleLocationUuids = LocationUtils.getUserAccessibleLocationUuids(authenticatedUser);
-        String locationAttributeUuid = Context.getAdministrationService().getGlobalProperty(LocationBasedAccessConstants.LOCATION_ATTRIBUTE_GLOBAL_PROPERTY_NAME);
-        if (StringUtils.isNotBlank(locationAttributeUuid)) {
-            final PersonAttributeType personAttributeType = Context.getPersonService().getPersonAttributeTypeByUuid(locationAttributeUuid);
-            if (accessibleLocationUuids != null) {
-                if(object instanceof List) {
-                    List<Patient> patientList = (List<Patient>) object;
-                    for (Iterator<Patient> iterator = patientList.iterator(); iterator.hasNext(); ) {
-                        if(!LocationUtils.doesPersonBelongToGivenLocations(iterator.next().getPerson(), personAttributeType, accessibleLocationUuids)) {
-                            iterator.remove();
-                        }
-                    }
-                    object = patientList;
-                }
-                else if(object instanceof Patient) {
-                    if(!LocationUtils.doesPersonBelongToGivenLocations(((Patient)object).getPerson(), personAttributeType, accessibleLocationUuids)) {
-                        object = null;
-                    }
-                }
-            } else {
-                log.debug("Search Patient : Null Session Location in the UserContext");
-                if(object instanceof Patient) {
-                    // If the sessionLocationId is null, then return null for a Patient instance
-                    return null;
-                }
-                else {
-                    // If the sessionLocationId is null, then return a empty list
-                    return new ArrayList<Patient>();
-                }
-            }
-        }
-        return object;
-    }
+		String lbacRestriction = Context.getAdministrationService()
+				.getGlobalProperty(LocationBasedAccessConstants.PATIENT_RESTRICTION_GLOBAL_PROPERTY_NAME);
+		if (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser()
+				|| !(lbacRestriction.equals("true"))) {
+			return object;
+		}
+
+		if (invocation.getMethod().getName() == "savePatient") {
+			if (object instanceof Patient) {
+				Patient thisPatient = (Patient) object;
+
+				HibernateLocationBasedAccessHeuristicsDAO locationBasedAccessHeuristicsDAO = Context
+						.getRegisteredComponents(HibernateLocationBasedAccessHeuristicsDAO.class).get(0);
+
+				List<Location> allLocations = Context.getLocationService().getAllLocations(false);
+
+				PersonAttributeType personAttributeType = Context.getPersonService()
+						.getPersonAttributeTypeByName(LocationBasedAccessConstants.PERSONATTRIBUTETYPE_NAME);
+				List<PersonAttribute> personAttributes = new ArrayList<PersonAttribute>();
+
+				for (Location location : allLocations) {
+					if (location.getParentLocation() != null) {
+						personAttributes.add(new PersonAttribute(personAttributeType, location.getUuid()));
+					}
+				}
+
+				for (PersonAttribute personAttribute : personAttributes) {
+					locationBasedAccessHeuristicsDAO.linkPersonAttributeToLocation(authenticatedUser, thisPatient,
+							personAttribute);
+				}
+			}
+			return object;
+		}
+
+		List<String> accessibleLocationUuids = LocationUtils.getUserAccessibleLocationUuids(authenticatedUser);
+		String locationAttributeUuid = Context.getAdministrationService()
+				.getGlobalProperty(LocationBasedAccessConstants.LOCATION_ATTRIBUTE_GLOBAL_PROPERTY_NAME);
+		if (StringUtils.isNotBlank(locationAttributeUuid)) {
+			final PersonAttributeType personAttributeType = Context.getPersonService()
+					.getPersonAttributeTypeByUuid(locationAttributeUuid);
+			if (accessibleLocationUuids != null) {
+				if (object instanceof List) {
+					List<Patient> patientList = (List<Patient>) object;
+					for (Iterator<Patient> iterator = patientList.iterator(); iterator.hasNext();) {
+						if (!LocationUtils.doesPersonBelongToGivenLocations(iterator.next().getPerson(),
+								personAttributeType, accessibleLocationUuids)) {
+							iterator.remove();
+						}
+					}
+					object = patientList;
+				} else if (object instanceof Patient) {
+					if (!LocationUtils.doesPersonBelongToGivenLocations(((Patient) object).getPerson(),
+							personAttributeType, accessibleLocationUuids)) {
+
+						object = null;
+					}
+				}
+			} else {
+				log.debug("Search Patient : Null Session Location in the UserContext");
+				if (object instanceof Patient) {
+					// If the sessionLocationId is null, then return null for a Patient instance
+
+					return null;
+				} else {
+					// If the sessionLocationId is null, then return a empty list
+					return new ArrayList<Patient>();
+				}
+			}
+		}
+
+		return object;
+	}
 }

@@ -6,30 +6,43 @@
 	<id>${project.parent.artifactId}</id>
 	<name>${project.parent.name}</name>
 	<version>${project.parent.version}</version>
-	<package>${project.parent.groupId}.${project.parent.artifactId}</package>
+	<package>${project.parent.groupId}.${project.parent.artifactId}
+	</package>
 	<author>OpenMRS</author>
 	<description>
 		${project.parent.description}
 	</description>
-	<updateURL>https://modules.openmrs.org/modules/download/${project.parent.artifactId}/update.rdf</updateURL>
+	<updateURL>https://modules.openmrs.org/modules/download/${project.parent.artifactId}/update.rdf
+	</updateURL>
 	<require_version>${openMRSVersion}</require_version>
 	<!-- / Module Properties -->
 
-	
+
+	<!-- Extensions -->
+	<extension>
+		<point>org.openmrs.admin.list</point>
+		<class>org.openmrs.module.locationbasedaccess.extension.html.AdminList
+		</class>
+	</extension>
+
+
 	<!-- Required Modules -->
 	<require_modules>
-		<require_module version="${uiframeworkVersion}">org.openmrs.module.uiframework</require_module>
-		<require_module version="${appuiVersion}">org.openmrs.module.appui</require_module>
+		<require_module version="${uiframeworkVersion}">org.openmrs.module.uiframework
+		</require_module>
+		<require_module version="${appuiVersion}">org.openmrs.module.appui
+		</require_module>
 	</require_modules>
 	<!-- / Required Modules -->
-	
+
 	<!-- Module Activator -->
-	<activator>${project.parent.groupId}.${project.parent.artifactId}.LocationBasedAccessActivator</activator>
-	
-	
+	<activator>${project.parent.groupId}.${project.parent.artifactId}.LocationBasedAccessActivator
+	</activator>
+
+
 	<!-- Maps hibernate file's, if present -->
 	<mappingFiles>
-				
+
 	</mappingFiles>
 
 	<!-- Internationalization -->
@@ -50,23 +63,28 @@
 
 	<advice>
 		<point>org.openmrs.api.PatientService</point>
-		<class>org.openmrs.module.locationbasedaccess.aop.PatientSearchAdviser</class>
+		<class>org.openmrs.module.locationbasedaccess.aop.PatientSearchAdviser
+		</class>
 	</advice>
 	<advice>
 		<point>org.openmrs.api.PersonService</point>
-		<class>org.openmrs.module.locationbasedaccess.aop.PersonSearchAdviser</class>
+		<class>org.openmrs.module.locationbasedaccess.aop.PersonSearchAdviser
+		</class>
 	</advice>
 	<advice>
 		<point>org.openmrs.api.EncounterService</point>
-		<class>org.openmrs.module.locationbasedaccess.aop.EncounterSearchAdviser</class>
+		<class>org.openmrs.module.locationbasedaccess.aop.EncounterSearchAdviser
+		</class>
 	</advice>
 	<advice>
 		<point>org.openmrs.api.UserService</point>
-		<class>org.openmrs.module.locationbasedaccess.aop.UserSearchAdviser</class>
+		<class>org.openmrs.module.locationbasedaccess.aop.UserSearchAdviser
+		</class>
 	</advice>
 	<advice>
 		<point>org.openmrs.api.LocationService</point>
-		<class>org.openmrs.module.locationbasedaccess.aop.LocationSearchAdviser</class>
+		<class>org.openmrs.module.locationbasedaccess.aop.LocationSearchAdviser
+		</class>
 	</advice>
 </module>
 
