@@ -76,7 +76,10 @@ public class EncounterServiceInterceptorAdvice implements MethodInterceptor {
 			log.debug("Search Encounter : Null Session Location in the UserContext");
 			if (object instanceof Encounter) {
 				// If the sessionLocationId is null, then return null for a Encounter instance
-				return null;
+
+				// TODO: for the legacy UI we return the object it self, we were getting error
+				// rendering the htmlform views
+				return object;
 			} else if (object instanceof Map) {
 
 				// If the sessionLocationId is null, then return a empty map
