@@ -3,6 +3,10 @@
 <%@ include file="/WEB-INF/template/header.jsp"%>
 <%@ include file="template/localHeader.jsp"%>
 
+<openmrs:require privilege="Manage User and Location Associations"
+	otherwise="/login.htm"
+	redirect="/module/locationbasedaccess/locationbasedaccessList.form" />
+
 <openmrs:htmlInclude
 	file="/scripts/jquery/dataTables/css/dataTables_jui.css" />
 <openmrs:htmlInclude

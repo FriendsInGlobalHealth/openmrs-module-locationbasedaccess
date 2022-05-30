@@ -3,6 +3,9 @@
 <%@ include file="/WEB-INF/template/header.jsp"%>
 <%@ include file="template/localHeader.jsp"%>
 
+<openmrs:require privilege="Manage User and Location Associations"
+	otherwise="/login.htm"
+	redirect="/module/locationbasedaccess/selectUser.form" />
 
 
 <openmrs:htmlInclude file="/scripts/calendar/calendar.js" />

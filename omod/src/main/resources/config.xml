@@ -24,8 +24,18 @@
 		<class>org.openmrs.module.locationbasedaccess.extension.html.AdminList
 		</class>
 	</extension>
-
-
+	
+	
+		<!-- Privileges -->
+	<privilege>
+		<name>Manage User and Location Associations</name>
+		<description>Able to Manage User and Location Associations</description>
+	</privilege>
+	<privilege>
+		<name>View Users and Associations</name>
+		<description>Able to view Users and Associations</description>
+	</privilege>
+	
 	<!-- Required Modules -->
 	<require_modules>
 		<require_module version="${uiframeworkVersion}">org.openmrs.module.uiframework
