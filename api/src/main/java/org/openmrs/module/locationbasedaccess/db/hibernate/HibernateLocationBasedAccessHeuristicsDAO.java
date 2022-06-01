@@ -34,10 +34,11 @@ public class HibernateLocationBasedAccessHeuristicsDAO implements LocationBasedA
 		this.evictCache();
 
 		@SuppressWarnings("rawtypes")
-		List list = this.sessionFactory.getCurrentSession().createSQLQuery(String.format(
-				"select * from person_attribute where person_id = %s and person_attribute_type_id = %s and value = '%s'",
-				patient.getId(), personAttribute.getAttributeType().getPersonAttributeTypeId(),
-				personAttribute.getValue())).list();
+		List list = this.sessionFactory.getCurrentSession()
+				.createSQLQuery(String.format(
+						"select * from person_attribute where person_id = %s and person_attribute_type_id = %s",
+						patient.getId(), personAttribute.getAttributeType().getPersonAttributeTypeId()))
+				.addEntity(PersonAttribute.class).list();
 
 		if (list.isEmpty()) {
 			String sqlInsert = "insert into person_attribute(person_id, value, person_attribute_type_id, creator, date_created, voided, uuid) values(%s, '%s', %s, %s, now(), %s, '%s' ) on duplicate key update person_attribute_type_id = 41 ";
@@ -46,6 +47,15 @@ public class HibernateLocationBasedAccessHeuristicsDAO implements LocationBasedA
 					.createSQLQuery(String.format(sqlInsert, patient.getId(), personAttribute.getValue(),
 							personAttribute.getAttributeType().getPersonAttributeTypeId(), user.getUserId(), false,
 							UUID.randomUUID().toString()))
+					.executeUpdate();
+			this.sessionFactory.getCurrentSession().flush();
+			this.evictCache();
+		} else {
+
+			String sqlUpdate = "update person_attribute set value = '%s' where person_id =%s and person_attribute_type_id = 41 ";
+
+			this.sessionFactory.getCurrentSession()
+					.createSQLQuery(String.format(sqlUpdate, personAttribute.getValue(), patient.getId()))
 					.executeUpdate();
 			this.sessionFactory.getCurrentSession().flush();
 			this.evictCache();

@@ -20,6 +20,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.Location;
 import org.openmrs.Patient;
+import org.openmrs.PatientIdentifier;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.User;
@@ -40,13 +41,6 @@ public class PatientServiceInterceptorAdvice implements MethodInterceptor {
 		}
 		Object object = invocation.proceed();
 
-		String lbacRestriction = Context.getAdministrationService()
-				.getGlobalProperty(LocationBasedAccessConstants.PATIENT_RESTRICTION_GLOBAL_PROPERTY_NAME);
-		if (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser()
-				|| !(lbacRestriction.equals("true"))) {
-			return object;
-		}
-
 		if (invocation.getMethod().getName() == "savePatient") {
 			if (object instanceof Patient) {
 				Patient thisPatient = (Patient) object;
@@ -54,23 +48,25 @@ public class PatientServiceInterceptorAdvice implements MethodInterceptor {
 				HibernateLocationBasedAccessHeuristicsDAO locationBasedAccessHeuristicsDAO = Context
 						.getRegisteredComponents(HibernateLocationBasedAccessHeuristicsDAO.class).get(0);
 
-				List<Location> allLocations = Context.getLocationService().getAllLocations(false);
+				PatientIdentifier preferredIdentifer = thisPatient.getPatientIdentifier();
+
+				Location preferredLocation = (preferredIdentifer != null) ? preferredIdentifer.getLocation() : null;
 
 				PersonAttributeType personAttributeType = Context.getPersonService()
 						.getPersonAttributeTypeByName(LocationBasedAccessConstants.PERSONATTRIBUTETYPE_NAME);
-				List<PersonAttribute> personAttributes = new ArrayList<PersonAttribute>();
 
-				for (Location location : allLocations) {
-					if (location.getParentLocation() != null) {
-						personAttributes.add(new PersonAttribute(personAttributeType, location.getUuid()));
-					}
-				}
-
-				for (PersonAttribute personAttribute : personAttributes) {
+				if (preferredLocation != null) {
 					locationBasedAccessHeuristicsDAO.linkPersonAttributeToLocation(authenticatedUser, thisPatient,
-							personAttribute);
+							new PersonAttribute(personAttributeType, preferredLocation.getUuid()));
 				}
 			}
+			return object;
+		}
+
+		String lbacRestriction = Context.getAdministrationService()
+				.getGlobalProperty(LocationBasedAccessConstants.PATIENT_RESTRICTION_GLOBAL_PROPERTY_NAME);
+		if (Daemon.isDaemonUser(authenticatedUser) || authenticatedUser.isSuperUser()
+				|| !(lbacRestriction.equals("true"))) {
 			return object;
 		}
 
