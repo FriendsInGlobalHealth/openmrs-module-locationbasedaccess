@@ -11,6 +11,7 @@ import org.hibernate.SessionFactory;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.PersonAttribute;
+import org.openmrs.PersonAttributeType;
 import org.openmrs.User;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.locationbasedaccess.LocationBasedAccessConstants;
@@ -41,22 +42,21 @@ public class HibernateLocationBasedAccessHeuristicsDAO implements LocationBasedA
 				.addEntity(PersonAttribute.class).list();
 
 		if (list.isEmpty()) {
-			String sqlInsert = "insert into person_attribute(person_id, value, person_attribute_type_id, creator, date_created, voided, uuid) values(%s, '%s', %s, %s, now(), %s, '%s' ) on duplicate key update person_attribute_type_id = 41 ";
+			String sqlInsert = "insert into person_attribute(person_id, value, person_attribute_type_id, creator, date_created, voided, uuid) values(%s, '%s', %s, %s, now(), %s, '%s' ) on duplicate key update person_attribute_type_id = %s ";
 
 			this.sessionFactory.getCurrentSession()
 					.createSQLQuery(String.format(sqlInsert, patient.getId(), personAttribute.getValue(),
 							personAttribute.getAttributeType().getPersonAttributeTypeId(), user.getUserId(), false,
-							UUID.randomUUID().toString()))
+							UUID.randomUUID().toString(), personAttribute.getAttributeType().getId()))
 					.executeUpdate();
 			this.sessionFactory.getCurrentSession().flush();
 			this.evictCache();
 		} else {
 
-			String sqlUpdate = "update person_attribute set value = '%s' where person_id =%s and person_attribute_type_id = 41 ";
+			String sqlUpdate = "update person_attribute set value = '%s' where person_id =%s and person_attribute_type_id = %s ";
 
-			this.sessionFactory.getCurrentSession()
-					.createSQLQuery(String.format(sqlUpdate, personAttribute.getValue(), patient.getId()))
-					.executeUpdate();
+			this.sessionFactory.getCurrentSession().createSQLQuery(String.format(sqlUpdate, personAttribute.getValue(),
+					patient.getId(), personAttribute.getAttributeType().getId())).executeUpdate();
 			this.sessionFactory.getCurrentSession().flush();
 			this.evictCache();
 		}
@@ -141,9 +141,12 @@ public class HibernateLocationBasedAccessHeuristicsDAO implements LocationBasedA
 		}
 		String parameter = StringUtils.removeEnd(uuids, ",");
 
+		PersonAttributeType personAttributeType = Context.getPersonService()
+				.getPersonAttributeTypeByName(LocationBasedAccessConstants.PERSONATTRIBUTETYPE_NAME);
+
 		return this.sessionFactory.getCurrentSession().createSQLQuery(String.format(
-				"select * from person_attribute where voided is false and person_attribute_id = 41 and value in (%s)",
-				parameter)).addEntity(PersonAttribute.class).list();
+				"select * from person_attribute where voided is false and person_attribute_id = %s and value in (%s)",
+				personAttributeType.getId(), parameter)).addEntity(PersonAttribute.class).list();
 	}
 
 	@Override
